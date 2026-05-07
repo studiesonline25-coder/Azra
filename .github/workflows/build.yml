@@ -26,11 +26,22 @@ jobs:
       with:
         gradle-version: '8.5'
 
-    - name: Build APK
-      run: gradle assembleDebug
+    - name: Generate Keystore
+      run: |
+        if [ ! -f "app/azra.jks" ]; then
+          keytool -genkey -v -keystore app/azra.jks -keyalg RSA -keysize 2048 -validity 10000 -alias azra -dname "CN=Azra, OU=Azra, O=Azra, L=Unknown, ST=Unknown, C=US" -storepass azrapassword -keypass azrapassword
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/azra.jks
+          git commit -m "Auto-generate release keystore"
+          git push || echo "Push failed, continuing with temporary keystore"
+        fi
 
-    - name: Upload APK
+    - name: Build Release APK
+      run: gradle assembleRelease
+
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: Azra-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: Azra-Release-APK
+        path: app/build/outputs/apk/release/app-release.apk

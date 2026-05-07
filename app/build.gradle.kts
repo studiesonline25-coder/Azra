@@ -14,6 +14,17 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("azra.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "azrapassword"
+                keyAlias = "azra"
+                keyPassword = "azrapassword"
+            }
+        }
+    }
 
     buildTypes {
         release {
@@ -23,6 +34,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (file("azra.jks").exists()) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {
