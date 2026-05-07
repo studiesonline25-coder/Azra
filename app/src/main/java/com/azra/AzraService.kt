@@ -38,7 +38,7 @@ class AzraService : Service() {
         return null
     }
 
-    private fun getForegroundServiceType(): Int {
+    override fun getForegroundServiceType(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         } else {
@@ -62,7 +62,7 @@ class AzraService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Azra Virtual Camera")
             .setContentText("Virtual camera is active")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.sym_def_app_icon)
             .build()
     }
 }
