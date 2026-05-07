@@ -19,7 +19,7 @@ class AzraService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(1, buildNotification(), getForegroundServiceType())
+        startForeground(1, buildNotification(), getForegroundServiceCameraType())
         
         virtualCameraManager = VirtualCameraManager(this)
         virtualCameraManager?.start()
@@ -38,7 +38,7 @@ class AzraService : Service() {
         return null
     }
 
-    override fun getForegroundServiceType(): Int {
+    private fun getForegroundServiceCameraType(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         } else {

@@ -2,20 +2,19 @@ package com.azra
 
 import android.annotation.SuppressLint
 import android.companion.virtual.VirtualDeviceManager
-import android.companion.virtual.VirtualDeviceParams
-import android.companion.virtual.camera.VirtualCamera
-import android.companion.virtual.camera.VirtualCameraConfig
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.util.Log
+import android.view.Surface
+import java.lang.reflect.Method
 
 class VirtualCameraManager(private val context: Context) {
 
     private val TAG = "VirtualCameraManager"
-    private var virtualDevice: VirtualDeviceManager.VirtualDevice? = null
-    private var virtualCamera: VirtualCamera? = null
+    private var virtualDevice: Any? = null
+    private var virtualCamera: Any? = null
     private var frameInjector: FrameInjector? = null
 
     @SuppressLint("WrongConstant")
@@ -32,18 +31,18 @@ class VirtualCameraManager(private val context: Context) {
                 return
             }
 
-            // In some environments, createVirtualDevice might require an association ID. 
-            // We use a dummy or skip if there's an overloaded method without it.
-            // Using VirtualDeviceParams.Builder()
-            val params = VirtualDeviceParams.Builder()
-                .setName("Azra_Virtual_Device")
-                .build()
-                
-            // Note: The API signature for createVirtualDevice varies between previews and final.
-            // Assuming the system allows it via CREATE_VIRTUAL_DEVICE permission.
-            // We might need reflection if the exact signature is hidden or requires companion device.
-            // Let's try the standard approach first.
-            virtualDevice = vdm.createVirtualDevice(0, params)
+            // Using Reflection for VirtualDeviceParams
+            val paramsBuilderClass = Class.forName("android.companion.virtual.VirtualDeviceParams\$Builder")
+            val paramsBuilder = paramsBuilderClass.newInstance()
+            val setNameMethod = paramsBuilderClass.getMethod("setName", String::class.java)
+            setNameMethod.invoke(paramsBuilder, "Azra_Virtual_Device")
+            val buildParamsMethod = paramsBuilderClass.getMethod("build")
+            val params = buildParamsMethod.invoke(paramsBuilder)
+
+            // Using Reflection for createVirtualDevice
+            val paramsClass = Class.forName("android.companion.virtual.VirtualDeviceParams")
+            val createVirtualDeviceMethod = vdm.javaClass.getMethod("createVirtualDevice", Int::class.javaPrimitiveType, paramsClass)
+            virtualDevice = createVirtualDeviceMethod.invoke(vdm, 0, params)
 
             if (virtualDevice == null) {
                 Log.e(TAG, "Failed to create VirtualDevice")
@@ -59,38 +58,34 @@ class VirtualCameraManager(private val context: Context) {
 
     @SuppressLint("NewApi")
     private fun setupVirtualCamera() {
-        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        var frontCameraId: String? = null
-
-        // Find real front camera
-        for (id in cameraManager.cameraIdList) {
-            val characteristics = cameraManager.getCameraCharacteristics(id)
-            if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT) {
-                frontCameraId = id
-                break
-            }
-        }
-
-        val configBuilder = VirtualCameraConfig.Builder(
-            "AzraFrontCamera"
-        ).setLensFacing(VirtualCameraConfig.LENS_FACING_FRONT)
-        
-        // In a full implementation, we would clone exact characteristics.
-        // For the first step, we just provide the basic required config.
-        // E.g., setting dimensions and format (usually ImageFormat.PRIVATE or YUV_420_888).
-        // Let's use 1920x1080 for testing green frames.
-        configBuilder.addStreamConfig(1920, 1080, android.graphics.ImageFormat.YUV_420_888, 30)
-        
-        val config = configBuilder.build()
-
         try {
-            virtualCamera = virtualDevice?.createVirtualCamera(config)
+            // Using Reflection for VirtualCameraConfig
+            val configBuilderClass = Class.forName("android.companion.virtual.camera.VirtualCameraConfig\$Builder")
+            val configBuilder = configBuilderClass.getConstructor(String::class.java).newInstance("AzraFrontCamera")
+
+            // setLensFacing(VirtualCameraConfig.LENS_FACING_FRONT) -> LENS_FACING_FRONT is usually 0
+            val setLensFacingMethod = configBuilderClass.getMethod("setLensFacing", Int::class.javaPrimitiveType)
+            setLensFacingMethod.invoke(configBuilder, 0)
+            
+            // addStreamConfig(1920, 1080, android.graphics.ImageFormat.YUV_420_888, 30)
+            val addStreamConfigMethod = configBuilderClass.getMethod("addStreamConfig", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            addStreamConfigMethod.invoke(configBuilder, 1920, 1080, android.graphics.ImageFormat.YUV_420_888, 30)
+            
+            val buildConfigMethod = configBuilderClass.getMethod("build")
+            val config = buildConfigMethod.invoke(configBuilder)
+
+            // createVirtualCamera
+            val configClass = Class.forName("android.companion.virtual.camera.VirtualCameraConfig")
+            val createVirtualCameraMethod = virtualDevice!!.javaClass.getMethod("createVirtualCamera", configClass)
+            virtualCamera = createVirtualCameraMethod.invoke(virtualDevice, config)
             
             if (virtualCamera != null) {
-                Log.i(TAG, "VirtualCamera created successfully!")
+                Log.i(TAG, "VirtualCamera created successfully via reflection!")
                 
-                // We retrieve the input surface to start injecting frames
-                val surface = virtualCamera?.inputSurface
+                // getInputSurface()
+                val getInputSurfaceMethod = virtualCamera!!.javaClass.getMethod("getInputSurface")
+                val surface = getInputSurfaceMethod.invoke(virtualCamera) as? Surface
+                
                 if (surface != null) {
                     frameInjector = FrameInjector(surface, 1920, 1080)
                     frameInjector?.start()
@@ -101,7 +96,7 @@ class VirtualCameraManager(private val context: Context) {
                 Log.e(TAG, "VirtualCamera is null after creation")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create VirtualCamera", e)
+            Log.e(TAG, "Failed to create VirtualCamera via reflection", e)
         }
     }
 
@@ -110,14 +105,19 @@ class VirtualCameraManager(private val context: Context) {
         frameInjector = null
         
         try {
-            // Depending on the API, virtualCamera might have a close() method
-            virtualCamera?.close()
+            if (virtualCamera != null) {
+                val closeMethod = virtualCamera!!.javaClass.getMethod("close")
+                closeMethod.invoke(virtualCamera)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error closing virtual camera", e)
         }
         
         try {
-            virtualDevice?.close()
+            if (virtualDevice != null) {
+                val closeDeviceMethod = virtualDevice!!.javaClass.getMethod("close")
+                closeDeviceMethod.invoke(virtualDevice)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error closing virtual device", e)
         }
