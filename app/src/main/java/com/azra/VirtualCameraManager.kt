@@ -18,7 +18,7 @@ class VirtualCameraManager(private val context: Context) {
     private var frameInjector: FrameInjector? = null
 
     @SuppressLint("WrongConstant")
-    fun start() {
+    fun start(associationId: Int) {
         if (Build.VERSION.SDK_INT < 34) {
             Log.e(TAG, "VirtualCamera requires API 34+")
             return
@@ -42,7 +42,7 @@ class VirtualCameraManager(private val context: Context) {
             // Using Reflection for createVirtualDevice
             val paramsClass = Class.forName("android.companion.virtual.VirtualDeviceParams")
             val createVirtualDeviceMethod = vdm.javaClass.getMethod("createVirtualDevice", Int::class.javaPrimitiveType, paramsClass)
-            virtualDevice = createVirtualDeviceMethod.invoke(vdm, 0, params)
+            virtualDevice = createVirtualDeviceMethod.invoke(vdm, associationId, params)
 
             if (virtualDevice == null) {
                 Log.e(TAG, "Failed to create VirtualDevice")
