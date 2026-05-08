@@ -5,14 +5,11 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-    <uses-feature
-        android:name="android.software.companion_device_setup" />
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.CREATE_VIRTUAL_DEVICE" />
-    <uses-permission android:name="android.permission.REQUEST_COMPANION_PROFILE_GLASSES" />
 
     <application
         android:allowBackup="true"

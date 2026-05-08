@@ -16,24 +16,16 @@ class AzraService : Service() {
     private val CHANNEL_ID = "AzraServiceChannel"
     private var virtualCameraManager: VirtualCameraManager? = null
 
-    private var associationId: Int = 0
-
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(1, buildNotification(), getForegroundServiceCameraType())
         
         virtualCameraManager = VirtualCameraManager(this)
+        virtualCameraManager?.start()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null && intent.hasExtra("associationId")) {
-            associationId = intent.getIntExtra("associationId", 0)
-            virtualCameraManager?.start(associationId)
-        } else {
-            // Fallback if started without ID, though it might fail later
-            virtualCameraManager?.start(0)
-        }
         return START_STICKY
     }
 
